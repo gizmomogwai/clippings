@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+clippings.so
+clippings.dylib
+clippings.dll
+clippings.a
+clippings.lib
+clippings-test-*
+*.exe
+*.o
+*.obj
+*.lst
+out/
