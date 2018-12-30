@@ -35,6 +35,7 @@ class Clipping
     string book;
     string author;
     string type;
+    int startLocation;
     string page;
     string date;
     string content;
@@ -55,6 +56,13 @@ class Clipping
             } else {
                 throw new Exception("Cannot find type in " ~ location);
             }
+        }
+
+        auto locationMatch = location.matchFirst(regex(".*Location (\\d*)"));
+        if (locationMatch.length == 2) {
+            this.startLocation = locationMatch[1].to!int;
+        } else {
+            throw new Exception("Cannot find location in " ~ location);
         }
 
         auto pageMatch = location.matchFirst(regex(".*on page (\\d*)"));
@@ -147,16 +155,18 @@ void writeHtml(T)(T clippings)
     output ~= `<span class="title">` ~ title~ "</span>\n" ~ `<span class="author"> by ` ~ author ~ "</span>\n";
     output ~= "<p>" ~ clippings.length.to!string ~ " Highlights</p>";
     output ~= "<hr/>";
-    foreach (clipping; clippings.sort!"a.page.to!int < b.page.to!int")
-    {
-        output ~= `<span class="clipping">`;
-        output ~= "    <span class=\"page\">Page " ~ clipping.page ~ "</span>";
-        output ~= "    <span class=\"date\"> on " ~ clipping.date ~ "</span><br/>\n";
-        output ~= "    <q class=\"content\">" ~ clipping.content ~ "</q>\n";
-        output ~= "<hr/>";
-        output ~= `</span>`;
-    }
-    output ~= "</body></html>";
+                                                       foreach (clipping; clippings.sort!"a.startLocation < b.startLocation")
+                                                       {
+                                                           output ~= `<span class="clipping">`;
+                                                           if (clipping.page != "0") {
+                                                               output ~= "    <span class=\"page\">Page " ~ clipping.page ~ "</span>";
+                                                           }
+                                                           output ~= "    <span class=\"date\"> on " ~ clipping.date ~ "</span><br/>\n";
+                                                           output ~= "    <q class=\"content\">" ~ clipping.content ~ "</q>\n";
+                                                           output ~= "<hr/>";
+                                                           output ~= `</span>`;
+                                                       }
+                                                       output ~= "</body></html>";
 
     std.file.write("out/" ~ title ~ ".html", output);
 }
