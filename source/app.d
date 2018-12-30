@@ -72,9 +72,19 @@ class Clipping
             this.page = "0";
         }
 
-        auto dateMatch = location.matchFirst(regex(".*Added on (.*)"));
-        if (dateMatch.length == 2) {
-            this.date = dateMatch[1];
+        auto dateMatch = location.matchFirst(regex(`.*Added on (?P<day>.*?), (?P<month>.*?) (?P<date>\d\d?), (?P<year>\d\d\d\d) (?P<h>\d\d?):(?P<m>\d\d):(?P<s>\d\d) (?P<ap>A|P)M`));
+        if (dateMatch.length == 9) {
+            this.date = dateMatch["day"]
+                ~ ", "
+                ~ dateMatch["date"]
+                ~ ". "
+                ~ dateMatch["month"]
+                ~ " "
+                ~ dateMatch["year"]
+                ~ ", "
+                ~ (dateMatch["ap"] == "A" ? dateMatch["h"] : (dateMatch["h"].to!int + 12).to!string)
+                ~ ":"
+                ~ dateMatch["m"];
         } else {
             throw new Exception("Cannot find Added on in " ~ location);
         }
@@ -146,23 +156,26 @@ void writeHtml(T)(T clippings)
     string output = "<!DOCTYPE html>\n<html><head>";
     output ~= `  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">` ~ "\n";
     output ~= "  <style>\n";
+    output ~= "    * { font-family: Optima; }\n";
     output ~= "    .title { font-size: 2em; }\n";
     output ~= "    .author { font-style: italic; }\n";
+    output ~= "    .count { font-style: italic; font-size: 0.8em;}\n";
+    output ~= "    .page { font-style: italic; font-size: 0.8em;}\n";
     output ~= "    .date { font-style: italic; font-size: 0.8em; }\n";
     output ~= "    .clipping { display: block; page-break-inside: avoid; }\n";
     output ~= "  </style>\n";
     output ~= "</head><body>";
     output ~= `<span class="title">` ~ title~ "</span>\n" ~ `<span class="author"> by ` ~ author ~ "</span>\n";
-    output ~= "<p>" ~ clippings.length.to!string ~ " Highlights</p>";
+    output ~= `<p class="count">` ~ clippings.length.to!string ~ " Highlights</p>";
     output ~= "<hr/>";
-                                                       foreach (clipping; clippings.sort!"a.startLocation < b.startLocation")
+    foreach (clipping; clippings.sort!"a.startLocation < b.startLocation")
                                                        {
                                                            output ~= `<span class="clipping">`;
                                                            if (clipping.page != "0") {
                                                                output ~= "    <span class=\"page\">Page " ~ clipping.page ~ "</span>";
                                                            }
                                                            output ~= "    <span class=\"date\"> on " ~ clipping.date ~ "</span><br/>\n";
-                                                           output ~= "    <q class=\"content\">" ~ clipping.content ~ "</q>\n";
+                                                           output ~= "    <p class=\"content\">" ~ clipping.content ~ "</p>\n";
                                                            output ~= "<hr/>";
                                                            output ~= `</span>`;
                                                        }
