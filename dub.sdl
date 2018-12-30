@@ -4,6 +4,8 @@ authors "Christian Köstlin"
 copyright "Copyright © 2018, Christian Köstlin"
 license "MIT"
 
+dependency "asciitable" version="~>0.0.3"
+
 configuration "application" {
   targetType "executable"
   targetPath "out/main"
