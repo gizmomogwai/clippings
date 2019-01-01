@@ -4,6 +4,7 @@ import std.algorithm;
 import std.range;
 import std.string;
 import std.conv;
+import std.array;
 
 class Clippings
 {
@@ -29,6 +30,26 @@ class Clippings
 }
 
 import std.regex;
+import std.datetime;
+
+int monthToNumber(string month) {
+    switch (month) {
+    case "January": return 1;
+    case "February": return 2;
+    case "March": return 3;
+    case "April": return 4;
+    case "May": return 5;
+    case "June": return 6;
+    case "July": return 7;
+    case "August": return 8;
+    case "September": return 9;
+    case "October": return 10;
+    case "November": return 11;
+    case "December": return 12;
+    default:
+        throw new Exception("Cannot convert month " ~month);
+    }
+}
 
 class Clipping
 {
@@ -37,7 +58,7 @@ class Clipping
     string type;
     int startLocation;
     string page;
-    string date;
+    DateTime date;
     string content;
     size_t pos;
     this(size_t pos, string book, string location, string content)
@@ -73,18 +94,15 @@ class Clipping
         }
 
         auto dateMatch = location.matchFirst(regex(`.*Added on (?P<day>.*?), (?P<month>.*?) (?P<date>\d\d?), (?P<year>\d\d\d\d) (?P<h>\d\d?):(?P<m>\d\d):(?P<s>\d\d) (?P<ap>A|P)M`));
+        alias toHour = (string h, string ap) => ap == "A" ? h.to!int : ((dateMatch["h"].to!int%12) + 12);
+        // writeln("Working on: " ~ location);
         if (dateMatch.length == 9) {
-            this.date = dateMatch["day"]
-                ~ ", "
-                ~ dateMatch["date"]
-                ~ ". "
-                ~ dateMatch["month"]
-                ~ " "
-                ~ dateMatch["year"]
-                ~ ", "
-                ~ (dateMatch["ap"] == "A" ? dateMatch["h"] : (dateMatch["h"].to!int + 12).to!string)
-                ~ ":"
-                ~ dateMatch["m"];
+            this.date = DateTime(dateMatch["year"].to!int,
+                                 dateMatch["month"].monthToNumber,
+                                 dateMatch["date"].to!int,
+                                 toHour(dateMatch["h"], dateMatch["ap"]),
+                                 dateMatch["m"].to!int,
+                                 dateMatch["s"].to!int);
         } else {
             throw new Exception("Cannot find Added on in " ~ location);
         }
@@ -146,13 +164,23 @@ Clippings collect(Clippings clippings, string file)
     return clippings;
 }
 
-void writeHtml(T)(T clippings)
+bool booksByNewestClipping(T)(T a, T b) {
+    auto clippings1 = a[1].array;
+    auto clippings2 = b[1].array;
+
+    return clippings1.map!("a.date.toISOString").array.reduce!(min) > clippings2.map!("a.date.toISOString").array.reduce!(min);
+}
+
+bool byStartLocation(T)(T a, T b) {
+    return a.startLocation < b.startLocation;
+}
+
+void writeHtml(T)(T allClippings)
 {
     import std.file;
 
-    auto title = clippings[0].book;
-    auto author = clippings[0].author;
-    
+    /+auto byBook = allClippings.values.sort!("a.book < b.book").chunkBy!("a.book");
+     +/
     string output = "<!DOCTYPE html>\n<html><head>";
     output ~= `  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">` ~ "\n";
     output ~= "  <style>\n";
@@ -163,25 +191,54 @@ void writeHtml(T)(T clippings)
     output ~= "    .page { font-style: italic; font-size: 0.8em;}\n";
     output ~= "    .date { font-style: italic; font-size: 0.8em; }\n";
     output ~= "    .clipping { display: block; page-break-inside: avoid; }\n";
+    output ~= "    .book { display: block; ndpage-break-before: always; }\n";
+    output ~= "    ul { list-style-type: none; }\n";
     output ~= "  </style>\n";
     output ~= "</head><body>";
-    output ~= `<span class="title">` ~ title~ "</span>\n" ~ `<span class="author"> by ` ~ author ~ "</span>\n";
-    output ~= `<p class="count">` ~ clippings.length.to!string ~ " Highlights</p>";
-    output ~= "<hr/>";
-    foreach (clipping; clippings.sort!"a.startLocation < b.startLocation")
-                                                       {
-                                                           output ~= `<span class="clipping">`;
-                                                           if (clipping.page != "0") {
-                                                               output ~= "    <span class=\"page\">Page " ~ clipping.page ~ "</span>";
-                                                           }
-                                                           output ~= "    <span class=\"date\"> on " ~ clipping.date ~ "</span><br/>\n";
-                                                           output ~= "    <p class=\"content\">" ~ clipping.content ~ "</p>\n";
-                                                           output ~= "<hr/>";
-                                                           output ~= `</span>`;
-                                                       }
-                                                       output ~= "</body></html>";
+    auto byBook = allClippings
+        .values
+        .sort!("a.book < b.book")
+        .chunkBy!("a.book")
+        .array
+        .sort!(booksByNewestClipping)
+        .array;
+    int idx = 0;
+    foreach (book; byBook) {
+        auto clippings = book[1].array;
+        auto title = clippings[0].book;
+        auto author = clippings[0].author;
+        auto firstRead = clippings.map!("a.date.toISOString").array.reduce!(min);
+        auto firstReadDate = DateTime.fromISOString(firstRead);
+        output ~= "<ul>";
+        output ~= `  <li><a href="#%d">%s, %s-%02d</a></li>`.format(idx, title, firstReadDate.year, firstReadDate.month.to!int);
+        output ~= "</ul>";
+        idx++;
+    }
+    idx = 0;
+    foreach (book; byBook.array) {
+        auto clippings = book[1].array;
+        auto title = clippings[0].book;
+        auto author = clippings[0].author;
 
-    std.file.write("out/" ~ title ~ ".html", output);
+        output ~= `<a class="book" name="%s"/>`.format(idx);
+        output ~= `<span class="title">` ~ title~ "</span>\n" ~ `<span class="author"> by ` ~ author ~ "</span>\n";
+        output ~= `<p class="count">` ~ clippings.length.to!string ~ " Highlights</p>";
+        output ~= "<hr/>";
+        foreach (clipping; clippings.sort!byStartLocation)
+        {
+            output ~= `<span class="clipping">`;
+            if (clipping.page != "0") {
+                output ~= "    <span class=\"page\">Page " ~ clipping.page ~ "</span>";
+            }
+            output ~= "    <span class=\"date\"> on %s</span><br/>\n".format(clipping.date.to!string[0..$-3]);
+            output ~= "    <p class=\"content\">" ~ clipping.content ~ "</p>\n";
+            output ~= "<hr/>";
+            output ~= `</span>`;
+        }
+        output ~= "</body></html>";
+        idx++;
+    }
+    std.file.write("out/all.html", output);
 }
 
 int main(string[] args)
@@ -208,6 +265,7 @@ int main(string[] args)
     auto table = new AsciiTable(2);
 
     auto byBook = allClippings.values.sort!("a.book < b.book").chunkBy!("a.book");
+    writeHtml(allClippings);
     foreach (bookClippings; byBook)
     {
         auto name = bookClippings[0].rigorousStrip;
@@ -219,7 +277,7 @@ int main(string[] args)
             //            table.row().add(" - ").add(clipping.pos.to!string);
         }
 
-        writeHtml(clippings);
+        //        writeHtml(clippings);
     }
     table.format.prefix("  | ").writeln;
 
