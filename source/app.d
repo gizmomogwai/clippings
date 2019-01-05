@@ -21,33 +21,47 @@ class Clippings
 
     alias clippings this;
     /*size_t size() {
-    return clippings.length;
-  }
-  auto keys() {
-    return clippings.keys;
-  }
-  */
+      return clippings.length;
+      }
+      auto keys() {
+      return clippings.keys;
+      }
+    */
 }
 
 import std.regex;
 import std.datetime;
 
-int monthToNumber(string month) {
-    switch (month) {
-    case "January": return 1;
-    case "February": return 2;
-    case "March": return 3;
-    case "April": return 4;
-    case "May": return 5;
-    case "June": return 6;
-    case "July": return 7;
-    case "August": return 8;
-    case "September": return 9;
-    case "October": return 10;
-    case "November": return 11;
-    case "December": return 12;
+int monthToNumber(string month)
+{
+    switch (month)
+    {
+    case "January":
+        return 1;
+    case "February":
+        return 2;
+    case "March":
+        return 3;
+    case "April":
+        return 4;
+    case "May":
+        return 5;
+    case "June":
+        return 6;
+    case "July":
+        return 7;
+    case "August":
+        return 8;
+    case "September":
+        return 9;
+    case "October":
+        return 10;
+    case "November":
+        return 11;
+    case "December":
+        return 12;
     default:
-        throw new Exception("Cannot convert month " ~month);
+        throw new Exception("Cannot convert month " ~ month);
     }
 }
 
@@ -68,60 +82,78 @@ class Clipping
         this.book = match[1].rigorousStrip;
         this.author = match[2].rigorousStrip;
         auto typeMatch = location.matchFirst(regex(`.*Your Bookmark.*`));
-        if (typeMatch.length == 1) {
+        if (typeMatch.length == 1)
+        {
             this.type = "Bookmark";
-        } else {
+        }
+        else
+        {
             typeMatch = location.matchFirst(regex(`.*Your Highlight.*`));
-            if (typeMatch.length == 1) {
+            if (typeMatch.length == 1)
+            {
                 this.type = "Highlight";
-            } else {
+            }
+            else
+            {
                 typeMatch = location.matchFirst(regex(`.*Your Note.*`));
-                if (typeMatch.length == 1) {
+                if (typeMatch.length == 1)
+                {
                     this.type = "Highlight";
-                } else {
+                }
+                else
+                {
                     throw new Exception("Cannot find type in " ~ location);
                 }
             }
         }
 
         auto locationMatch = location.matchFirst(regex(".*Location (\\d*)"));
-        if (locationMatch.length == 2) {
+        if (locationMatch.length == 2)
+        {
             this.startLocation = locationMatch[1].to!int;
-        } else {
+        }
+        else
+        {
             throw new Exception("Cannot find location in " ~ location);
         }
 
         auto pageMatch = location.matchFirst(regex(".*on page (\\d*)"));
-        if (pageMatch.length == 2) {
+        if (pageMatch.length == 2)
+        {
             this.page = pageMatch[1];
-        } else {
+        }
+        else
+        {
             this.page = "0";
         }
 
         auto dateMatch = location.matchFirst(regex(`.*Added on (?P<day>.*?), (?P<month>.*?) (?P<date>\d\d?), (?P<year>\d\d\d\d) (?P<h>\d\d?):(?P<m>\d\d):(?P<s>\d\d) (?P<ap>A|P)M`));
-        alias toHour = (string h, string ap) => ap == "A" ? h.to!int : ((dateMatch["h"].to!int%12) + 12);
+        alias toHour = (string h, string ap) => ap == "A" ? h.to!int
+            : ((dateMatch["h"].to!int % 12) + 12);
         // writeln("Working on: " ~ location);
-        if (dateMatch.length == 9) {
+        if (dateMatch.length == 9)
+        {
             this.date = DateTime(dateMatch["year"].to!int,
-                                 dateMatch["month"].monthToNumber,
-                                 dateMatch["date"].to!int,
-                                 toHour(dateMatch["h"], dateMatch["ap"]),
-                                 dateMatch["m"].to!int,
-                                 dateMatch["s"].to!int);
-        } else {
+                    dateMatch["month"].monthToNumber, dateMatch["date"].to!int,
+                    toHour(dateMatch["h"], dateMatch["ap"]),
+                    dateMatch["m"].to!int, dateMatch["s"].to!int);
+        }
+        else
+        {
             throw new Exception("Cannot find Added on in " ~ location);
         }
         this.content = content;
     }
 
-    bool isHighlight() {
+    bool isHighlight()
+    {
         return type == "Highlight";
     }
-    
+
     override string toString()
     {
-        return "Book: " ~ book ~ "\n  Author: " ~ author ~ "\n  Page: "
-            ~ page ~ "\n  Content: " ~ content ~ "\n";
+        return "Book: " ~ book ~ "\n  Author: " ~ author ~ "\n  Page: " ~ page
+            ~ "\n  Content: " ~ content ~ "\n";
     }
     /+
      string toKindle()
@@ -159,8 +191,9 @@ Clippings collect(Clippings clippings, string file)
     while (lines.length >= 5)
     {
         auto clipping = new Clipping(pos, lines[0].rigorousStrip,
-                                     lines[1].rigorousStrip, lines[3].rigorousStrip);
-        if (clipping.isHighlight) {
+                lines[1].rigorousStrip, lines[3].rigorousStrip);
+        if (clipping.isHighlight)
+        {
             clippings.add(clipping);
         }
         lines = lines[5 .. $];
@@ -169,14 +202,17 @@ Clippings collect(Clippings clippings, string file)
     return clippings;
 }
 
-bool booksByNewestClipping(T)(T a, T b) {
+bool booksByNewestClipping(T)(T a, T b)
+{
     auto clippings1 = a[1].array;
     auto clippings2 = b[1].array;
 
-    return clippings1.map!("a.date.toISOString").array.reduce!(min) > clippings2.map!("a.date.toISOString").array.reduce!(min);
+    return clippings1.map!("a.date.toISOString")
+        .array.reduce!(min) > clippings2.map!("a.date.toISOString").array.reduce!(min);
 }
 
-bool byStartLocation(T)(T a, T b) {
+bool byStartLocation(T)(T a, T b)
+{
     return a.startLocation < b.startLocation;
 }
 
@@ -200,42 +236,43 @@ void writeHtml(T)(T allClippings)
     output ~= "    ul { list-style-type: none; }\n";
     output ~= "  </style>\n";
     output ~= "</head><body>";
-    auto byBook = allClippings
-        .values
-        .sort!("a.book < b.book")
-        .chunkBy!("a.book")
-        .array
-        .sort!(booksByNewestClipping)
-        .array;
+    auto byBook = allClippings.values.sort!("a.book < b.book")
+        .chunkBy!("a.book").array.sort!(booksByNewestClipping).array;
     int idx = 0;
-    foreach (book; byBook) {
+    foreach (book; byBook)
+    {
         auto clippings = book[1].array;
         auto title = clippings[0].book;
         auto author = clippings[0].author;
         auto firstRead = clippings.map!("a.date.toISOString").array.reduce!(min);
         auto firstReadDate = DateTime.fromISOString(firstRead);
         output ~= "<ul>";
-        output ~= `  <li><a href="#%d">%s, %s-%02d</a></li>`.format(idx, title, firstReadDate.year, firstReadDate.month.to!int);
+        output ~= `  <li><a href="#%d">%s, %s-%02d</a></li>`.format(idx, title,
+                firstReadDate.year, firstReadDate.month.to!int);
         output ~= "</ul>";
         idx++;
     }
     idx = 0;
-    foreach (book; byBook.array) {
+    foreach (book; byBook.array)
+    {
         auto clippings = book[1].array;
         auto title = clippings[0].book;
         auto author = clippings[0].author;
 
         output ~= `<a class="book" name="%s"/>`.format(idx);
-        output ~= `<span class="title">` ~ title~ "</span>\n" ~ `<span class="author"> by ` ~ author ~ "</span>\n";
+        output ~= `<span class="title">` ~ title ~ "</span>\n"
+            ~ `<span class="author"> by ` ~ author ~ "</span>\n";
         output ~= `<p class="count">` ~ clippings.length.to!string ~ " Highlights</p>";
         output ~= "<hr/>";
         foreach (clipping; clippings.sort!byStartLocation)
         {
             output ~= `<span class="clipping">`;
-            if (clipping.page != "0") {
+            if (clipping.page != "0")
+            {
                 output ~= "    <span class=\"page\">Page " ~ clipping.page ~ "</span>";
             }
-            output ~= "    <span class=\"date\"> on %s</span><br/>\n".format(clipping.date.to!string[0..$-3]);
+            output ~= "    <span class=\"date\"> on %s</span><br/>\n".format(
+                    clipping.date.to!string[0 .. $ - 3]);
             output ~= "    <p class=\"content\">" ~ clipping.content ~ "</p>\n";
             output ~= "<hr/>";
             output ~= `</span>`;
@@ -252,6 +289,11 @@ int main(string[] args)
 
     Clippings allClippings = new Clippings;
 
+    if (args.length < 2)
+    {
+        "Usage: clippings filename".writeln;
+        return 1;
+    }
     foreach (file; args[1 .. $])
     {
         allClippings.collect(file);
