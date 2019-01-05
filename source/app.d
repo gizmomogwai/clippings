@@ -98,7 +98,7 @@ class Clipping
                 typeMatch = location.matchFirst(regex(`.*Your Note.*`));
                 if (typeMatch.length == 1)
                 {
-                    this.type = "Highlight";
+                    this.type = "Note";
                 }
                 else
                 {
@@ -145,9 +145,9 @@ class Clipping
         this.content = content;
     }
 
-    bool isHighlight()
+    bool isHighlightOrNote()
     {
-        return type == "Highlight";
+        return type == "Highlight" || type == "Note";
     }
 
     override string toString()
@@ -192,7 +192,7 @@ Clippings collect(Clippings clippings, string file)
     {
         auto clipping = new Clipping(pos, lines[0].rigorousStrip,
                 lines[1].rigorousStrip, lines[3].rigorousStrip);
-        if (clipping.isHighlight)
+        if (clipping.isHighlightOrNote)
         {
             clippings.add(clipping);
         }
@@ -231,8 +231,8 @@ void writeHtml(T)(T allClippings)
     output ~= "    .count { font-style: italic; font-size: 0.8em;}\n";
     output ~= "    .page { font-style: italic; font-size: 0.8em;}\n";
     output ~= "    .date { font-style: italic; font-size: 0.8em; }\n";
-    output ~= "    .clipping { display: block; page-break-inside: avoid; }\n";
-    output ~= "    .book { display: block; ndpage-break-before: always; }\n";
+    output ~= "    .clipping { margin: 2em; display: block; page-break-inside: avoid; }\n";
+    output ~= "    .book { margin: 1em; display: block; page-break-before: always; }\n";
     output ~= "    ul { list-style-type: none; }\n";
     output ~= "  </style>\n";
     output ~= "</head><body>";
@@ -262,7 +262,20 @@ void writeHtml(T)(T allClippings)
         output ~= `<a class="book" name="%s"/>`.format(idx);
         output ~= `<span class="title">` ~ title ~ "</span>\n"
             ~ `<span class="author"> by ` ~ author ~ "</span>\n";
-        output ~= `<p class="count">` ~ clippings.length.to!string ~ " Highlights</p>";
+        auto highlights = clippings.filter!(`a.type == "Highlight"`).count;
+        auto notes = clippings.filter!(`a.type =="Note"`).count;
+        output ~= "</p>\n";
+        if (highlights != 0) {
+            output ~= `<span class="count">%s Highlights</span>`.format(highlights);
+            if (notes != 0) {
+                output ~= `<span class="count"> - %s Notes</span>`.format(notes);
+            }
+        } else {
+            if (notes != 0) {
+                output ~= `<span class="count">%s Notes</span>`.format(notes);
+            }
+        }
+        output ~= "\n";
         output ~= "<hr/>";
         foreach (clipping; clippings.sort!byStartLocation)
         {
@@ -271,8 +284,10 @@ void writeHtml(T)(T allClippings)
             {
                 output ~= "    <span class=\"page\">Page " ~ clipping.page ~ "</span>";
             }
-            output ~= "    <span class=\"date\"> on %s</span><br/>\n".format(
-                    clipping.date.to!string[0 .. $ - 3]);
+            output ~= `    <span class="date">%s</span>`.format(
+              clipping.date.to!string[0 .. $ - 3]) ~ "\n";
+            output ~= " - " ~ `<span class="date">%s</span></br>`.format(
+              clipping.type) ~ "\n";
             output ~= "    <p class=\"content\">" ~ clipping.content ~ "</p>\n";
             output ~= "<hr/>";
             output ~= `</span>`;
