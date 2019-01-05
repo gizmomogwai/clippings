@@ -75,7 +75,12 @@ class Clipping
             if (typeMatch.length == 1) {
                 this.type = "Highlight";
             } else {
-                throw new Exception("Cannot find type in " ~ location);
+                typeMatch = location.matchFirst(regex(`.*Your Note.*`));
+                if (typeMatch.length == 1) {
+                    this.type = "Highlight";
+                } else {
+                    throw new Exception("Cannot find type in " ~ location);
+                }
             }
         }
 
