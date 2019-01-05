@@ -2,7 +2,7 @@
 	"fileVersion": 1,
 	"versions": {
 		"asciitable": "0.0.8",
-		"colored": "0.0.18",
+		"colored": "0.0.19",
 		"packageversion": "0.0.18",
 		"unit-threaded": "0.7.53"
 	}
