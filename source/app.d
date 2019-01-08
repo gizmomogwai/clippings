@@ -9,12 +9,50 @@ import std.array;
 class Clippings
 {
     Clipping[string] clippings;
-    Clippings add(Clipping clipping)
+    auto add(Clipping clipping)
     {
         string h = clipping.toString;
         if (h !in clippings)
         {
             clippings[h] = clipping;
+        }
+        return this;
+    }
+
+    auto remove(Clipping clipping)
+    {
+        string h = clipping.toString;
+        if (h in clippings)
+        {
+            clippings.remove(h);
+        }
+        return this;
+    }
+
+    auto assignNotesToClippings()
+    {
+        Clipping[] toRemove = [];
+        foreach (note; clippings.values.dup)
+        {
+            if (note.type == "note")
+            {
+                foreach (clipping; clippings.values)
+                {
+                    if (note != clipping)
+                    {
+                        if (note.location.intersects(clipping.location))
+                        {
+                            "Assigning %s to %s".format(note, clipping).writeln;
+                            toRemove ~= note;
+                            clipping.add(note);
+                        }
+                    }
+                }
+            }
+        }
+        foreach (c; toRemove)
+        {
+            remove(c);
         }
         return this;
     }
@@ -65,16 +103,62 @@ int monthToNumber(string month)
     }
 }
 
+class Location
+{
+    int start;
+    int end;
+    this(int start)
+    {
+        this.start = start;
+        this.end = -1;
+    }
+
+    this(int start, int end)
+    {
+        this.start = start;
+        this.end = end;
+    }
+
+    bool intersects(Location l)
+    {
+        if (end == -1 && l.end == -1)
+        {
+            return start == l.start;
+        }
+        if (end == -1)
+        {
+            return start >= l.start && start <= l.end;
+        }
+
+        if (l.end == -1)
+        {
+            return start <= l.start && end >= l.end;
+        }
+
+        if (l.end < start)
+        {
+            return false;
+        }
+
+        if (end < l.start)
+        {
+            return false;
+        }
+        return true;
+    }
+}
+
 class Clipping
 {
     string book;
     string author;
     string type;
-    int startLocation;
+    Location location;
     string page;
     DateTime date;
     string content;
     size_t pos;
+    Clipping[] childs;
     this(size_t pos, string book, string location, string content)
     {
         this.pos = pos;
@@ -82,23 +166,24 @@ class Clipping
         this.book = match[1].rigorousStrip;
         this.author = match[2].rigorousStrip;
         auto typeMatch = location.matchFirst(regex(`.*Your Bookmark.*`));
+        this.childs = [];
         if (typeMatch.length == 1)
         {
-            this.type = "Bookmark";
+            this.type = "bookmark";
         }
         else
         {
             typeMatch = location.matchFirst(regex(`.*Your Highlight.*`));
             if (typeMatch.length == 1)
             {
-                this.type = "Highlight";
+                this.type = "highlight";
             }
             else
             {
                 typeMatch = location.matchFirst(regex(`.*Your Note.*`));
                 if (typeMatch.length == 1)
                 {
-                    this.type = "Note";
+                    this.type = "note";
                 }
                 else
                 {
@@ -107,14 +192,22 @@ class Clipping
             }
         }
 
-        auto locationMatch = location.matchFirst(regex(".*Location (\\d*)"));
-        if (locationMatch.length == 2)
+        auto locationMatch = location.matchFirst(regex(".*Location (\\d*)-(\\d*)"));
+        if (locationMatch.length == 3)
         {
-            this.startLocation = locationMatch[1].to!int;
+            this.location = new Location(locationMatch[1].to!int, locationMatch[2].to!int);
         }
         else
         {
-            throw new Exception("Cannot find location in " ~ location);
+            locationMatch = location.matchFirst(regex(".Location (\\d*)"));
+            if (locationMatch.length == 2)
+            {
+                this.location = new Location(locationMatch[1].to!int);
+            }
+            else
+            {
+                throw new Exception("Cannot find location in " ~ location);
+            }
         }
 
         auto pageMatch = location.matchFirst(regex(".*on page (\\d*)"));
@@ -145,9 +238,15 @@ class Clipping
         this.content = content;
     }
 
+    auto add(Clipping child)
+    {
+        childs ~= child;
+        return this;
+    }
+
     bool isHighlightOrNote()
     {
-        return type == "Highlight" || type == "Note";
+        return type == "highlight" || type == "note";
     }
 
     override string toString()
@@ -213,7 +312,19 @@ bool booksByNewestClipping(T)(T a, T b)
 
 bool byStartLocation(T)(T a, T b)
 {
-    return a.startLocation < b.startLocation;
+    return a.location.start < b.location.start;
+}
+
+string getTypeString(Clipping clipping)
+{
+    if (clipping.childs.length == 0)
+    {
+        return clipping.type.capitalize;
+    }
+    else
+    {
+        return clipping.type.capitalize ~ " with " ~ clipping.childs[0].type.capitalize;
+    }
 }
 
 void writeHtml(T)(T allClippings)
@@ -224,21 +335,33 @@ void writeHtml(T)(T allClippings)
      +/
     string output = "<!DOCTYPE html>\n<html><head>";
     output ~= `  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">` ~ "\n";
-    output ~= "  <style>\n";
+    //output ~= `  <link href="https://fonts.googleapis.com/css?family=Charm" rel="stylesheet">`;
+    //output ~= `  <link href="https://fonts.googleapis.com/css?family=Dancing+Script" rel="stylesheet">`;
+    output ~= `  <link href="https://fonts.googleapis.com/css?family=Kalam" rel="stylesheet">`;
+    output ~= "\n  <style>\n";
     output ~= "    * { font-family: Optima; }\n";
+    output ~= "    .toc { margin-left: 2em; width: 80%; }\n";
+    output ~= "    .books { margin-left: 2em; width: 90%; }\n";
     output ~= "    .title { font-size: 2em; }\n";
     output ~= "    .author { font-style: italic; }\n";
     output ~= "    .count { font-style: italic; font-size: 0.8em;}\n";
     output ~= "    .page { font-style: italic; font-size: 0.8em;}\n";
     output ~= "    .date { font-style: italic; font-size: 0.8em; }\n";
-    output ~= "    .clipping { margin: 2em; display: block; page-break-inside: avoid; }\n";
-    output ~= "    .book { margin: 1em; display: block; page-break-before: always; }\n";
+    output ~= "    .clipping { margin-left: 2em; margin-right: 2em; display: block; page-break-inside: avoid; }\n";
+    output ~= "    .book { display: block; page-break-before: always; }\n";
+    output ~= "    .highlight { }\n";
+    // output ~= "    .note { font-family: 'Charm', cursive; }\n";
+    //output ~= "    .note { font-family: 'Dancing Script', cursive; }\n";
+    output ~= "    .note { font-family: 'Kalam', cursive; }\n";
+    output ~= "    .note { font-family: 'Dancing Script', cursive; }\n";
+    output ~= "    .highlight .note { padding-left: 1em; border-left: 3px solid; }\n";
     output ~= "    ul { list-style-type: none; }\n";
     output ~= "  </style>\n";
-    output ~= "</head><body>";
+    output ~= `</head><body><div class="books">`;
     auto byBook = allClippings.values.sort!("a.book < b.book")
         .chunkBy!("a.book").array.sort!(booksByNewestClipping).array;
     int idx = 0;
+    output ~= `<ul class="toc">`;
     foreach (book; byBook)
     {
         auto clippings = book[1].array;
@@ -246,32 +369,39 @@ void writeHtml(T)(T allClippings)
         auto author = clippings[0].author;
         auto firstRead = clippings.map!("a.date.toISOString").array.reduce!(min);
         auto firstReadDate = DateTime.fromISOString(firstRead);
-        output ~= "<ul>";
         output ~= `  <li><a href="#%d">%s, %s-%02d</a></li>`.format(idx, title,
                 firstReadDate.year, firstReadDate.month.to!int);
-        output ~= "</ul>";
         idx++;
     }
+    output ~= "</ul>";
     idx = 0;
+    output ~= `<div class="books">`;
     foreach (book; byBook.array)
     {
         auto clippings = book[1].array;
         auto title = clippings[0].book;
         auto author = clippings[0].author;
 
-        output ~= `<a class="book" name="%s"/>`.format(idx);
-        output ~= `<span class="title">` ~ title ~ "</span>\n"
-            ~ `<span class="author"> by ` ~ author ~ "</span>\n";
-        auto highlights = clippings.filter!(`a.type == "Highlight"`).count;
-        auto notes = clippings.filter!(`a.type =="Note"`).count;
-        output ~= "</p>\n";
-        if (highlights != 0) {
+        output ~= `<a class="book" name="%s" />`.format(idx);
+        output ~= `<span class="title">%s</span>`.format(title) ~ "\n";
+        output ~= `<span class="author"> by %s</span>`.format(author) ~ "\n";
+        auto highlights = clippings.filter!(`a.type == "highlight"`).count;
+        auto notes = clippings.filter!(
+                `a.type =="note" || a.childs.filter!(a => a.type == "note").count`).count;
+
+        output ~= "</br>\n";
+        if (highlights != 0)
+        {
             output ~= `<span class="count">%s Highlights</span>`.format(highlights);
-            if (notes != 0) {
+            if (notes != 0)
+            {
                 output ~= `<span class="count"> - %s Notes</span>`.format(notes);
             }
-        } else {
-            if (notes != 0) {
+        }
+        else
+        {
+            if (notes != 0)
+            {
                 output ~= `<span class="count">%s Notes</span>`.format(notes);
             }
         }
@@ -285,16 +415,21 @@ void writeHtml(T)(T allClippings)
                 output ~= "    <span class=\"page\">Page " ~ clipping.page ~ "</span>";
             }
             output ~= `    <span class="date">%s</span>`.format(
-              clipping.date.to!string[0 .. $ - 3]) ~ "\n";
+                    clipping.date.to!string[0 .. $ - 3]) ~ "\n";
             output ~= " - " ~ `<span class="date">%s</span></br>`.format(
-              clipping.type) ~ "\n";
-            output ~= "    <p class=\"content\">" ~ clipping.content ~ "</p>\n";
+                    clipping.getTypeString) ~ "\n";
+            output ~= "    <div class=\"%s\">%s\n".format(clipping.type, clipping.content);
+            foreach (note; clipping.childs)
+            {
+                output ~= `      <p class="note">%s</p>`.format(note.content);
+            }
+            output ~= "    </div>\n";
             output ~= "<hr/>";
             output ~= `</span>`;
         }
-        output ~= "</body></html>";
         idx++;
     }
+    output ~= "</div></body></html>";
     std.file.write("out/all.html", output);
 }
 
@@ -313,14 +448,9 @@ int main(string[] args)
     {
         allClippings.collect(file);
     }
-    /+
-     auto output = File("out.txt", "w");
-     foreach (key; allClippings.keys.sort)
-     {
-     output.write(allClippings[key].toKindle);
-     }
-     +/
     stderr.writeln(allClippings.length, " clippings in total");
+
+    allClippings.assignNotesToClippings;
 
     import asciitable;
 
@@ -334,12 +464,16 @@ int main(string[] args)
 
         auto clippings = bookClippings[1].array;
         table.row().add(name ~ ", " ~ clippings[0].author).add(clippings.length.to!string);
-        foreach (clipping; clippings)
-        {
-            //            table.row().add(" - ").add(clipping.pos.to!string);
-        }
 
-        //        writeHtml(clippings);
+        /+
+         foreach (clipping; clippings)
+         {
+         table.row().add(" - ").add(clipping.pos.to!string);
+         }
+         +/
+        /+
+         writeHtml(clippings);
+         +/
     }
     table.format.prefix("  | ").writeln;
 
