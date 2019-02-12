@@ -1,0 +1,10 @@
+* TODO filter out notes/clippings that are doubled
+e.g.
+2018-Dec-21 07:18 - Highlight with Note
+Customization. This is the art of tweaking or adjusting how you perform a task—even just slightly—to make it feel more comfortable and natural to your unique sensibilities.
+How?
+
+2018-Dec-21 07:17 - Highlight with Note
+Customization. This is the art of tweaking or adjusting how you perform a task—even just slightly—to make it feel more comfortable
+How?
+

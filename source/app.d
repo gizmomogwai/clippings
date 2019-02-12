@@ -38,7 +38,7 @@ class Clippings
             {
                 foreach (clipping; clippings.values)
                 {
-                    if (note != clipping)
+                    if ((note != clipping) && (note.book == clipping.book))
                     {
                         if (note.location.intersects(clipping.location))
                         {
@@ -358,7 +358,7 @@ void writeHtml(T)(T allClippings)
     output ~= "    ul { list-style-type: none; }\n";
     output ~= "  </style>\n";
     output ~= `</head><body><div class="books">`;
-    auto byBook = allClippings.values.sort!("a.book < b.book")
+    auto byBook = allClippings.dup.values.sort!("a.book < b.book")
         .chunkBy!("a.book").array.sort!(booksByNewestClipping).array;
     int idx = 0;
     output ~= `<ul class="toc">`;
@@ -451,31 +451,6 @@ int main(string[] args)
     stderr.writeln(allClippings.length, " clippings in total");
 
     allClippings.assignNotesToClippings;
-
-    import asciitable;
-
-    auto table = new AsciiTable(2);
-
-    auto byBook = allClippings.values.sort!("a.book < b.book").chunkBy!("a.book");
-    writeHtml(allClippings);
-    foreach (bookClippings; byBook)
-    {
-        auto name = bookClippings[0].rigorousStrip;
-
-        auto clippings = bookClippings[1].array;
-        table.row().add(name ~ ", " ~ clippings[0].author).add(clippings.length.to!string);
-
-        /+
-         foreach (clipping; clippings)
-         {
-         table.row().add(" - ").add(clipping.pos.to!string);
-         }
-         +/
-        /+
-         writeHtml(clippings);
-         +/
-    }
-    table.format.prefix("  | ").writeln;
-
+    allClippings.writeHtml;
     return 0;
 }
