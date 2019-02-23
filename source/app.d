@@ -63,13 +63,6 @@ class Clippings
     }
 
     alias clippings this;
-    /*size_t size() {
-      return clippings.length;
-      }
-      auto keys() {
-      return clippings.keys;
-      }
-    */
 }
 
 import std.regex;
@@ -228,7 +221,6 @@ class Clipping
         auto dateMatch = location.matchFirst(regex(`.*Added on (?P<day>.*?), (?P<month>.*?) (?P<date>\d\d?), (?P<year>\d\d\d\d) (?P<h>\d\d?):(?P<m>\d\d):(?P<s>\d\d) (?P<ap>A|P)M`));
         alias toHour = (string h, string ap) => ap == "A" ? h.to!int
             : ((dateMatch["h"].to!int % 12) + 12);
-        // writeln("Working on: " ~ location);
         if (dateMatch.length == 9)
         {
             this.date = DateTime(dateMatch["year"].to!int,
@@ -259,12 +251,6 @@ class Clipping
         return "Book: " ~ book ~ "\n  Author: " ~ author ~ "\n  Page: " ~ page
             ~ "\n  Content: " ~ content ~ "\n";
     }
-    /+
-     string toKindle()
-     {
-     return book ~ "\r\n" ~ page ~ "\r\n\r\n" ~ content ~ "\r\n" ~ "==========" ~ "\r\n";
-     }
-     +/
 }
 
 string rigorousStrip(string s)
@@ -284,7 +270,7 @@ Clippings collect(Clippings clippings, string file)
 {
     auto content = readText(file);
     auto lines = content.split("\r\n");
-    writeln("Read ", lines.length, " lines");
+    stderr.writeln("Read ", lines.length, " lines");
     size_t pos = 0;
     if (lines.length % 5 != 1)
     {
@@ -340,8 +326,6 @@ void writeHtml(T)(T allClippings)
      +/
     string output = "<!DOCTYPE html>\n<html><head>";
     output ~= `  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">` ~ "\n";
-    //output ~= `  <link href="https://fonts.googleapis.com/css?family=Charm" rel="stylesheet">`;
-    //output ~= `  <link href="https://fonts.googleapis.com/css?family=Dancing+Script" rel="stylesheet">`;
     output ~= `  <link href="https://fonts.googleapis.com/css?family=Kalam" rel="stylesheet">`;
     output ~= "\n  <style>\n";
     output ~= "    * { font-family: Optima; }\n";
@@ -355,8 +339,6 @@ void writeHtml(T)(T allClippings)
     output ~= "    .clipping { margin-left: 2em; margin-right: 2em; display: block; page-break-inside: avoid; }\n";
     output ~= "    .book { display: block; page-break-before: always; }\n";
     output ~= "    .highlight { }\n";
-    // output ~= "    .note { font-family: 'Charm', cursive; }\n";
-    //output ~= "    .note { font-family: 'Dancing Script', cursive; }\n";
     output ~= "    .note { font-family: 'Kalam', cursive; }\n";
     output ~= "    .note { font-family: 'Dancing Script', cursive; }\n";
     output ~= "    .highlight .note { padding-left: 1em; border-left: 3px solid; }\n";
@@ -440,8 +422,6 @@ void writeHtml(T)(T allClippings)
 
 int main(string[] args)
 {
-    args.writeln;
-
     Clippings allClippings = new Clippings;
 
     if (args.length < 2)
