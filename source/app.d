@@ -11,11 +11,17 @@ class Clippings
     Clipping[string] clippings;
     auto add(Clipping clipping)
     {
-        string h = clipping.toString;
-        if (h !in clippings)
-        {
-            clippings[h] = clipping;
+        foreach (c; clippings) {
+            if (c.content.startsWith(clipping.content)) {
+                // we have it already >= new clipping -> ignore
+                return this;
+            } else if (clipping.content.startsWith(c.content)) {
+                // we have it already < new clipping -> replace
+                clippings.remove(c.toString);
+            }
         }
+        string h = clipping.toString;
+        clippings[h] = clipping;
         return this;
     }
 
@@ -42,7 +48,6 @@ class Clippings
                     {
                         if (note.location.intersects(clipping.location))
                         {
-                            "Assigning %s to %s".format(note, clipping).writeln;
                             toRemove ~= note;
                             clipping.add(note);
                         }
