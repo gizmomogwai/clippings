@@ -1,4 +1,6 @@
-* TODO filter out notes/clippings that are doubled
+* DONE filter out notes/clippings that are doubled
+  CLOSED: [2019-02-24 Sun 00:14]
+  - CLOSING NOTE [2019-02-24 Sun 00:14]
 e.g.
 2018-Dec-21 07:18 - Highlight with Note
 Customization. This is the art of tweaking or adjusting how you perform a task—even just slightly—to make it feel more comfortable and natural to your unique sensibilities.
