@@ -1,12 +1,10 @@
 name "clippings"
 description "Join Kindle clippings."
-authors "Christian Köstlin"
-copyright "Copyright © 2018, Christian Köstlin"
+authors "Christian Koestlin"
+copyright "Copyright (c) 2018, Christian Koestlin"
 license "MIT"
 
-dependency "asciitable" version="~>0.0.3"
+dependency "asciitable" version="~>0.0.9"
 
-configuration "application" {
-  targetType "executable"
-  targetPath "out/main"
-}
+targetType "executable"
+targetPath "out/main"
