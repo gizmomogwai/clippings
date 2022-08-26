@@ -4,7 +4,7 @@ authors "Christian Koestlin"
 copyright "Copyright (c) 2018, Christian Koestlin"
 license "MIT"
 
-dependency "asciitable" version="~>0.0.14"
+dependency "asciitable" version="~>0.0.16"
 
 targetType "executable"
 targetPath "out/main"
